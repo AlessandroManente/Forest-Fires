@@ -1,0 +1,815 @@
+%----------------------------------GENERAL SETTINGS--------------------------------------------------
+
+%Tools->Global Options->Sweave-> choose Knitr as standard running file
+%install "knitr" in RStudio
+%install "xtable" in RStudio
+
+<<echo=FALSE>>=
+##set the global chunk options with 'echo'=F to load the knitr, packages and data without errors
+opts_chunk$set(echo=F,message=F,warning=F)
+@
+
+
+<<>>=
+#install.packages("accrual")#causes an error: maybe is not possible to install packages directly here???
+@
+
+
+%loads all packages needed for R script
+<<>>=
+library(xtable)
+library(knitr)
+library(Sleuth3)
+library(stargazer)
+@
+
+%loads all data needed for R script
+<<>>=
+
+@
+
+
+
+
+%-----------------------------------------------PREAMBLE----------------------------------
+\documentclass[pt=11,a4paper,twoside]{article}
+%\usepackage{fullpage}
+\usepackage{geometry}
+\geometry{a4paper,margin=1in,top=3cm,footskip=30pt}%includefoot,tmargin,headheight,top=4cm,bottom=2cm,lmargin=3cm,rmargin=2cm
+\usepackage{amsmath, amsfonts,amssymb,amsthm,mathtools}
+\usepackage[T1]{fontenc}%codifica dei font
+\usepackage[utf8]{inputenc}%lettere accentate da tastiera
+\usepackage[autostyle]{csquotes}
+\usepackage[italian,english]{babel}
+\usepackage{booktabs}%for tables
+\usepackage{caption}%for tables
+\usepackage{graphicx}%for figures
+\usepackage{tabularx}
+\usepackage{float}%for imposing absolute position to a table/figure with parameter[H]
+\usepackage{changepage}%to indent entire block of text
+\usepackage{gensymb}
+
+%to costumize headings
+\usepackage{fancyhdr}
+%\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+%\renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
+\fancyhf{}%clear the default page style
+%\fancyhead[LO,RE]{\textsc{\nouppercase{{\thepage}}}}
+\fancyfoot[CO,CE]{\textsc{\nouppercase{{\thepage}}}}
+\fancyhead[CE]{\textsc{\nouppercase{{\leftmark}}}}
+\fancyhead[CO]{\textsc{\nouppercase{{\leftmark}}}}
+%\fancypagestyle{plain}{}
+\newcommand{\indep}{\perp \!\!\! \perp}
+\newcommand\smallO{
+  \mathchoice
+    {{\scriptstyle\mathcal{O}}}% \displaystyle
+    {{\scriptstyle\mathcal{O}}}% \textstyle
+    {{\scriptscriptstyle\mathcal{O}}}% \scriptstyle
+    {\scalebox{.7}{$\scriptscriptstyle\mathcal{O}$}}%\scriptscriptstyle
+  }
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+}
+\urlstyle{same}
+
+%following command have to be called before \maketitle
+\author{Adriano Rasetta, Alessandro Manente, Giuliano Squarcina}
+\title{Statistical Learning Project: Forest Fires}
+\date{\today} % \today
+%--------------------------------------------------------------------------------------------
+
+
+\begin{document}
+
+%\SweaveOpts{concordance=TRUE}
+\maketitle
+\thispagestyle{empty}
+\pagestyle{fancy}
+
+<<echo=FALSE>>=
+#reset the global chunk options with 'echo'=T to print the R chunks in the pdf. If you don't want, simply
+#write 'echo'=F
+opts_chunk$set(echo=F,message=F,warning=F)
+@
+
+%######################################################################################
+%--------------------------------------------------------------------------------------------------------
+
+\section{Data}\bigskip
+The dataset contains forest fire data from the Montesinho natural park, in the northeast region of Portugal. The data was collected from January 2000 to December 2003 and it was built using two sources. The first database was collected by the inspector that was responsible for the Montesinho fire occurrences. At a daily basis, every time a forest fire occurred, several features were registered. The second database was collected by the Braganca Polytechnic Institute, containing several weather observations that were recorded with a 30 minute period by a meteorological station located in the center of the Montesinho park.\\
+ This dataset is available at: \url{http://www.dsi.uminho.pt/~pcortez/forestfires/}.\\
+ The dataset contains: 
+ \begin{itemize}
+      \item spatial location data (\emph{X}, \emph{Y}) within a $9x9$ grid
+      \item temporal data (\emph{month}, \emph{day})
+      \item fire danger indexes (\emph{FFMC}, \emph{DMC}, \emph{DC}, \emph{ISI})
+      \item meteorological data
+  \end{itemize}
+  The following table explains each variable in detail:
+  \begin{table}[H]
+    	\footnotesize%to reduce the font size of the text in the table
+    	\caption{The preprocessed dataset attributes}%to show intestazione, numero e didascalia
+    	%\label{tab:esempio 4b}%name for cross references
+    	\centering
+    	\begin{tabularx}{\textwidth}{lX}
+    		\toprule
+    		\textbf{X} & x-axis coordinate (from 1 to 9) of the $9x9$ grid in which the park area has been divided \\
+    		\textbf{Y} & y-axis coordinate (from 1 to 9) of the $9x9$ grid in which the park area has been divided \\
+    		\midrule
+    		\textbf{month} &  Month when fire occurred: in some months fires are more frequent\\
+    		\textbf{day} &  Day of the week when fire occurred: in some days fires are more frequent due to human                       activites (e.g. work days vs weekend)\\
+    		\midrule
+    		\textbf{FFMC} & Fine Fuel Moisture Code: denotes the moisture content surface litter and influences                                ignition and fire spread\\
+    		\textbf{DMC} & Duff Moisture Code: the moisture content of shallow organic layers\\
+    		\textbf{DC} & Drought Code: the moisture content of deep organic layers\\
+    		\textbf{ISI} & Score indicating the fire velocity spread\\
+    		\midrule
+    		\textbf{temp} & Outside temperature (in $C^\circ$)\\
+    		\textbf{RH} & Outside relative humidity (in $\%$)\\
+    		\textbf{wind} & Outside wind speed (in $km/h$)\\
+    		\textbf{rain} & Outside rain (in $mm/m^2$ )\\
+    		\midrule
+    		\textbf{area} & Total burned area (in \emph{ha}): the target variable we would like to predict \\
+    		\bottomrule
+    	\end{tabularx}
+\end{table}
+  
+\newpage
+
+\section{Data exploration}\bigskip
+<<>>=
+setwd("C:/Users/Vittorino/Google Drive/Data Science - Unipd/I Year/II Semester/Statistical Learning 2/Project")
+data=read.table('forestfires.csv',header=T,sep=',')
+attach(data)
+set.seed(555)
+@
+\noindent
+First of all we check the presence of \verb!NA!:
+<<>>=
+colSums(is.na(data))
+@
+\noindent
+The dataset is complete.
+To grasp a  raw idea about the data we are dealing with, we use a \emph{pair plot}, since the number of variables is still manageable: 
+<<fig.width=8,fig.height=8,fig.align="center">>=
+## panel.hist function: put histograms on the diagonal
+panel.hist <- function(x, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(usr[1:2], 0, 1.5) )
+  h <- hist(x, plot = FALSE)
+  breaks <- h$breaks; nB <- length(breaks)
+  y <- h$counts; y <- y/max(y)
+  rect(breaks[-nB], 0, breaks[-1], y, col = "cyan", ...)
+}
+
+## panel.cor function: put (absolute) correlations on the upper panels, with size proportional to the correlations.
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- abs(cor(x, y))
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste0(prefix, txt)
+  if(missing(cex.cor)) cex.cor <- 1.3#/strwidth(txt)
+  text(0.5, 0.5, txt, cex = cex.cor)
+}
+pairs(data, diag.panel=panel.hist, upper.panel=panel.cor, lower.panel=panel.smooth)
+@
+\noindent
+Analyzing the scatterplot we observe that:
+\begin{itemize}
+  \item many scatter plots of (quantitative) regressors show a circular cluster of points, that implies a           weak correlation between many pairs of regressors
+  \item some others exhibit an almost $0$ correlation (points are streched along an horizontal or vertical         line); i.e. \emph{wind} vs \emph{rain}
+  \item only few of them exhibit a high correlation, but anyway never above $0.68$; i.e. \emph{DMC} vs             \emph{DC}
+\end{itemize} 
+\noindent
+The above observations can be quantized computing the correlation matrix:
+<<>>=
+round(cor(data[,-c(3, 4, 13)]), 2)
+@
+\noindent
+This excludes a multicollinearity problem.
+It's worth focus on the relation between regressors and the response \emph{area} (last line of previous \emph{pair plot}):
+<<fig.width=9,fig.height=9,fig.align="center">>=
+par(mfrow=c(3,4))
+for (i in 1:12)
+{
+  plot(data[,i],area,xlab=colnames(data)[i])
+  m=lm(area~data[,i],data=data)
+  abline(m,col='red')
+}
+par(mfrow=c(1,1))
+@
+\noindent
+What appears is an almost flat cluster of points in each scatterplot, which means that as anyone of the regressor changes, the value of \emph{area} is almost not affected. When all regressors are going to be considered simultaneously in the multiple regression setting, we expect almost all of them will remain not significant, defining a difficult regression problem.\\
+Numerical summaries for each variable are also computed:
+<<>>=
+summary(data)
+@
+\noindent
+Note that: 
+\begin{itemize}
+  \item \emph{area} has a very low mean compared with the $max(area)$. So its distribution appears right-skewed.
+  \item \emph{month} has categories with heterogeneuous frequencies
+\end{itemize}
+Analyzing these variables more in detail:
+<<fig.width=6,fig.height=4,fig.align="center">>=
+par(mfrow=c(1,3))
+hist(area,col='red',main='area')
+boxplot(area,main='area')
+month=factor(month,levels=c("jan","feb", "mar","apr" , "may","jun","jul","aug", "sep", "oct","nov", "dec" ))
+barplot(summary(month),main='Months frequency',ylab='Frequency',col='blue',cex.names=0.75) 
+par(mfrow=c(1,1))
+@
+\noindent
+\emph{area} is actually right-skewed and \emph{month} has high heterogeneity in its class frequencies.
+To solve the first issue, it's advisible to apply the following transformation to \emph{area}:
+\[ \ln(area+1) \]
+in this way the right skewed is reduced and the $+1$ prevents to have $\ln0$, which is not defined.
+<<fig.width=4,fig.height=4,fig.align="center">>=
+par(mfrow=c(1,2))
+hist(log(area+1), col='red',main=expression(ln(area+1)))
+boxplot(log(area+1),main=expression(ln(area+1)))
+par(mfrow=c(1,1))
+@
+\noindent
+To solve the second issue, the $12$ categories in \emph{month} are grouped in $4$ categories, correspondig with the 4 seasons. The new categorical variable is called \emph{season}.
+<<>>=
+month.copy=month
+month.copy=as.character(month)
+month.copy[month=='dec' | month=='jan' | month=='feb']='winter'
+month.copy[month=='mar' | month=='apr' | month=='may']='spring'
+month.copy[month=='jun' | month=='jul' | month=='aug']='summer'
+month.copy[month=='sep' | month=='oct' | month=='nov']='autumn'
+season=factor(month.copy, levels=c('autumn','winter','spring','summer'))
+data[,3]=season
+colnames(data)[3]='season'
+summary(season)
+@
+<<fig.width=4,fig.height=4,fig.align="center">>=
+barplot(summary(season),main='Seasons frequency',ylab='Frequency',col='blue',cex.names = 0.85) 
+@
+The $4$ categories in \emph{season} are less unbalanced than $12$ categories in \emph{month}: a regression model can learn more from few categories with higher frequency than many categories with low frequency. Moreover, in the perspective to use Cross-Validation to get more robust results, some categories could appear just in the training set and not in the validation set, creating a problem of unseen categories in the test set. It's also useful to reduce the number of of categories in \emph{day} from $7$ to $2$, splitting the days of the week in "working day" and "week-end".
+<<>>=
+day.copy=day
+day.copy=as.character(day)
+day.copy[day=='mon' | day=='tue' | day=='wed' | day=='thu' | day=='fri']='working_day'
+day.copy[day=='sat' | day=='sun']='weekend'
+day=factor(day.copy, levels=c('working_day','weekend'))
+data[,4]=day
+summary(day)
+@
+\noindent
+Given tha data, the relevant question is:\\
+\textbf{Is it possible to predict the \emph{ha} of forest burned on a given region in a given time interval, provided:
+\begin{itemize}
+      \item spatial location data 
+      \item temporal data 
+      \item fire danger indexes 
+      \item meteorological data?
+  \end{itemize}
+  }
+\noindent
+Such knowledge is particularly useful for improving firefighting resource management (e.g. prioritizing
+targets for air tankers and ground crews), reducing forest distruction, economical and ecological damage and preserving humans' life.\\
+We are going to tackle such question looking for a model capable to provide a satisfactory answer.
+
+
+\newpage
+
+\section{Model Selection}
+We start estimating the full model, containing all regressors available. The aim is to check the significance of the full regression:
+<<>>=
+full.mod=lm(log(area+1)~.,data=data)
+summary(full.mod)
+@
+\noindent
+All coefficients but one are not significant at 5\% significance level, as guessed in \emph{Data Exploration} section. The unique significant coefficient at 5\% significance level is \emph{wind}. Also the \mbox{\emph{Adjusted R-squared}} is low if compared to toy datasets, but is in line with many other regressions on real-world data. The \emph{p-value} on \emph{F-statistic} shows a mild evidence about the significance of the full regression.\\
+Nevertheless, the regression model could be useful to make predicions. Such assumption can be tested in a simple way: compare the performance of the \emph{naive prediction} \emph{avg(area)} with the $\hat{y}$ estimated from the full model. If the prediction error is significantly smaller for $\hat{y}$, than it's meaningful to go on in the analysis of the regression model (i.e. variable selection, adding non-linearity, etc.).
+Using the \mbox{\emph{Root Mean Squared Error(RMSE)}} the results are:
+<<>>=
+log_yhat=predict(object=full.mod)
+y_hat=exp(log_yhat)-1
+y_hat[y_hat<0]=0
+#root mean squared error (RMSE) of full model
+RMSE=sqrt(mean((area-y_hat)^2))#from the RMSE point of view, the best option is the 
+                                    #naive average predictor. 
+                                    # is justified by the nature of each error criteria: 
+                                    # the RMSE is more sensitive to outliers than the MAD metric.
+
+#root mean squared error (RMSE) of naive model(y_hat_naive=mean(y))
+y_mean=mean(area)
+RMSE_naive=sqrt(mean((area-y_mean)^2))#from the RMSE point of view, the best option is the 
+                                            #naive average predictor. 
+                                            # is justified by the nature of each error criteria: 
+                                            # the RMSE is more sensitive to outliers than the MAD metric.
+@
+\begin{center}
+  \begin{tabular}{ll}
+    \toprule
+    \emph{RMSE} & \Sexpr{round(RMSE,2)}\\
+    \emph{RMSE naive} & \Sexpr{round(RMSE_naive,2)}\\
+     \bottomrule
+  \end{tabular}
+\end{center}
+\noindent
+so it does not seem meaningful to carry on any further statistical analysis. Anyway the \emph{RMSE} is sensitive to outliers, and our analysis highlighted their presence, due to the right-skewed distribution of \emph{area}. Hence it is worth to use an \emph{error} less sensitive to outliers: \emph{Mean Absolute Error (MAE)}, which leads to:
+<<>>=
+#mean absolute error (MAE) of full model
+MAE=mean(abs(area-y_hat))
+#mean absolute error (MAE) of naive model(y_hat_naive=mean(y))
+MAE_naive=mean(abs(area-y_mean))
+@
+\begin{center}
+  \begin{tabular}{ll}
+    \toprule
+    \emph{MAE} & \Sexpr{round(MAE,2)}\\
+    \emph{MAE naive} & \Sexpr{round(MAE_naive,2)}\\
+    \bottomrule
+  \end{tabular}
+\end{center}
+\noindent
+so \emph{MAE} is \Sexpr{round((1-MAE/MAE_naive)*100,2)}\% smaller than \emph{MAE naive}. The improvement is not negligible. It is meaningful to use the model for prediction: this implies that our first concern is to increase the \emph{predictive} capability of the model, even at cost to reduce its interpretability. \\
+We start analyzing the residuals of the \emph{full model} estimated previously:
+<<fig.width=6,fig.height=6,fig.align="center">>=
+par(mfrow=c(2,2))
+plot(full.mod)
+par(mfrow=c(1,1))
+@
+\noindent
+\textbf{Residuals vs Fitted}:
+\begin{itemize}
+\item there appears to be little pattern in the residuals, suggesting that the there is a straight-line relationship between the predictors and the response.
+ \item there is a mild evidence of non-constant variances in the errors (heteroscedasticity) from the presence of a funnel shape in the residual plot: one possible solution is to transform the response $Y$ using a concave function such as $\ln(Y)$ or $\sqrt{Y}$. Anyway we already \emph{log-transform} the response variable \emph{area}, and trying further concave transformation does not lead to sensitive improvements.
+\end{itemize}
+
+\textbf{Normal Q-Q}:
+\begin{itemize}
+  \item residuals have a left-tail distribution lighter than Normal and a right-tail distribution heavier than Normal (right-skewed)
+\end{itemize}
+
+\textbf{Scale-Location}:
+\begin{itemize}
+  \item the presence of heteroskedasticity can be seen also from how the \emph{studentized residuals} spread along the ranges of $\hat{y}$. Ideally the red line should be horizontal.
+\end{itemize}
+
+\textbf{Residuals vs Leverage}:
+\begin{itemize}
+  \item observations whose \emph{studentized residuals} are greater than $3$ in absolute value are possible outliers
+  \item observation $500$, whose \emph{Leverage} is greater than \emph{Cook's distance} (outside the red dashed line) is a \emph{leverage point}. The regression results will be altered if we exclude this observation.
+\end{itemize}
+Excluding observation $500$, the regression result is:
+<<>>=
+without_lev.mod=lm(log(area+1)~.,data=data[-500,])
+summary(without_lev.mod)
+@
+\noindent
+now \emph{rain} and \emph{RH} have changed sign, but are still not signifcant. The \mbox{\emph{Adjusted R-square}} is increased and also the significance of regression (lower \emph{p-value} of \emph{F-statistic})
+is increased. We are interested in checking if this can increase the predictive power of the model:
+<<>>=
+log_yhat=predict(object=without_lev.mod)
+y_hat=exp(log_yhat)-1
+y_hat[y_hat<0]=0
+MAE_withoutLev=mean(abs(area[-500]-y_hat))
+@
+\begin{center}
+  \begin{tabular}{ll}
+    \toprule
+    \emph{MAE} & \Sexpr{round(MAE,2)}\\
+    $MAE_{-leveragePoint}$ & \Sexpr{round(MAE_withoutLev,2)}\\
+    \bottomrule
+  \end{tabular}
+\end{center}
+\noindent
+The \emph{MAEs} are the same, so no real improvement in performance from excluding the leverage point. Anyway is advisible to keep it out of dataset.\\
+<<>>=
+data=data[-500,]# REDEFINE data EXCLUDING THE HIGH LEVERAGE POINT
+@
+A possible way to increase the \emph{predictive} power of the model is to extend it with some interactions. It's reasonable to expect that the effect of \emph{DMC} on \emph{area} also depends by \emph{wind}. By words: the amount of bursted area as the moisture content of shallow organic layers increases, is not independent by the wind, which positively contributes to increase bursted area.
+<<>>=
+interaction.mod=lm(log(area+1)~.+wind:DMC,data=data)
+summary(interaction.mod)
+log_yhat=predict(object=interaction.mod)
+y_hat=exp(log_yhat)-1
+y_hat[y_hat<0]=0
+MAE_interaction=mean(abs(area-y_hat))
+@
+\noindent
+The \emph{wind*DMC} coefficient is not significant and the $MAE_{interactionModel}= $\Sexpr{round(MAE_interaction,2)}, which is  a not meaningful reduction. Further attempts to extend the model result to be not worthful, so we keep it as it is.\\
+Tested that is not possible to extend easily the model to get lower \emph{MAE}, it is interesting to check if is possible to maintain a comparable \emph{MAE} using fewer regressors, which could be beneficial for interpretability too.\\
+
+\subsection{Backward Selection}
+Using \emph{backward selection} is possible to get the following model:
+<<>>=
+#  trace=1: to see the steps of the backward selections
+full.mod=lm(log(area+1)~.,data=data)
+step.mod <- step(full.mod, steps=1000,  trace=1, direction="backward")
+@
+\noindent
+Interpretation:\\
+each row contains info about the model \emph{without (-)} the regressor indicated at the beginning of the row.
+If the model without a given regressor has a particolar high $RSS$ or $AIC$, then the excluded
+regressor is important, and its exclusion worsen a lot the model.
+By analogy, makes sense to exclude the regressor that is less useful in explaning the response,
+that is, the regressor which exclusion leads to the model with the lowest $RSS$ (or $AIC$). The model selected is:
+\[ area=\beta_0+\beta_1 rain +\beta_2 X +\beta_3 DMC+\beta_4 temp+ \beta_5 wind +\beta_6 season \]
+
+
+\subsection{Forward Selection}
+Using \emph{forward selection} is possible to get the following model:
+<<>>=
+null.mod <- lm(log(area+1)~1,data=data)
+step.mod <- step(null.mod, steps=1000, trace=1,
+                 scope=list(lower=formula(null.mod), upper=formula(full.mod)),
+                 direction="forward")
+@
+\noindent
+Interpretation:\\
+each row contains info about the model \emph{with (+)} the regressor indicated at the beginning of the row.
+If the model with a given regressor has a particolar low $RSS$ or $AIC$, then the included
+regressor is important, and its inclusion improve a lot the model.
+By analogy, makes sense to include the regressor that is more useful in explaning the response,
+that is, the regressor which inclusion leads to the model with the lowest $RSS$ (or $AIC$). The model selected is:
+\[ area=\beta_0+\beta_1 rain +\beta_2 X +\beta_3 DMC+\beta_4 temp+ \beta_5 wind +\beta_6 season \]
+\noindent
+This is the same model selected by \emph{backward selection}.\\  
+
+\subsection{Parameters Shrinkage: Lasso Regression}
+We try to perform variables selection using \emph{Lasso Regression}. The \emph{lasso} implicitly assumes that a number of the coefficients truly equal zero, so, in general, it should perform better in a 
+setting where a relatively small number of predictors have substantial coefficients. Here we hope to identify a subset of regressors similar to the \emph{backward selection}.\\
+The regressors, except the categorical ones, are standardize, to neutralize the effect of different measurements unit on the shrinkage procedure. Then a \emph{lasso} regression is performed, using \emph{LOOCV} to find the optimal lambda ($\lambda^*$), which minimizes the error in the training set.  
+<<>>=
+library(glmnet)
+set.seed(555)
+#number of units in the dataset and number of units in the training set
+n <- dim(data)[1]
+#n.train <-  round(n * 2/3)
+
+#creation of training set and test set (2/3) (type: dataframe)
+#total.random.train <- sample(1:n, n.train)
+#x.train <- data[total.random.train, ]
+#x.test <- data[-total.random.train,]
+
+#standardization of variables(apart the categorical ones (columns 3,4) and y )
+#x.train_scaled<- x.train
+x.train_scaled=data
+x.train_scaled[,c(1,2,5:12)] <- scale(x.train_scaled[,c(1,2,5:12)])
+
+#x.test_scaled<-x.test
+#x.test_scaled[,c(1,2,5:12)] <- scale(x.test_scaled[,c(1,2,5:12)])
+
+#creation of model matrices to fit the model  (type: matrix)
+mod.matrix.train <- model.matrix(~., data=x.train_scaled[,-13])
+#mod.matrix.test <- model.matrix(~., data=x.test_scaled[,-13])
+
+#use CV in training set to find optimal lambda
+lasso.mod.cv <- cv.glmnet(x=mod.matrix.train[,-1], y=log(x.train_scaled$area+1), 
+                          alpha=1,
+                          type.measure='mae',
+                          stardardize=F,
+                          nfolds=n)
+@
+\noindent
+The estimated coefficents using $\lambda^*$ are:
+<<>>=
+coef(lasso.mod.cv,s="lambda.min")#when lambda optimal is approx. 0, the Lasso regression is approx. 
+                                 #equivalent to a OLS, so no useful to use Lasso
+#coef(lasso.mod.cv,s="lambda.1se")
+lambda_star=lasso.mod.cv$lambda.min
+#lasso.mod.cv$lambda.1se
+@
+\noindent
+with $\lambda^*= $\Sexpr{round(lambda_star,7)}. When $\lambda^*\approx 0$, the \emph{lasso regression} is approximately equivalent to an \emph{OLS regression}, so there is no particolar reason to use it. This explains why only \emph{RH} variable is shrunk by \emph{lasso}. So it does not seem to be an appropriate technique to be used in this dataset.\\
+We used some standard plot to display better the situation:
+<<fig.width=6,fig.height=4,fig.align="center">>=
+plot(lasso.mod.cv)#needed interpretation
+#abline(v=log(lasso.mod.cv$lambda.1se),lty=2,lwd=2)
+abline(v=log(lasso.mod.cv$lambda.min), col=3, lty=2,lwd=2)
+@
+\noindent
+As $\log(\lambda)$ increases, more regressors are pushed to zero, but the \emph{MAE} in the \emph{validation set} tends to increase monotonically until a peak is reached. Then there is a slightly decrease, but anyway the $min(MAE)$ is reached for $\lambda^*$ found before.\\
+The same information can be shown using the following plot:
+<<fig.width=6,fig.height=4,fig.align="center">>=
+#estimate the lasso regression on whole training set for all values of lambda to see where is located
+#the lambda optimal found by CV
+lasso.mod<-glmnet(x=mod.matrix.train[,-1], y=log(x.train_scaled$area+1), alpha=1)
+plot(lasso.mod, xvar="lambda")
+#abline(v=log(lasso.mod.cv$lambda.1se),lty=2,lwd=2)
+abline(v=log(lasso.mod.cv$lambda.min), col=3,lty=2,lwd=2)
+@
+So \emph{lasso} regression keeps all variables but one (\emph{RH}), which do not satisfy our aim. The \emph{lasso model} is essentialy identic to the \emph{full model}, impling similar performances:  
+<<>>=
+#prediction on the train set(to fair comparison with other models that were trained and tested on the whole dataset)
+log_lasso.pred.val <- predict(lasso.mod.cv, newx=mod.matrix.train[,-1], s="lambda.min")
+lasso.pred.val=exp(log_lasso.pred.val)-1
+#mse.lasso.cv <- mean((lasso.pred.val-x.train_scaled$area)^2)
+mae.lasso.cv <- mean(abs(lasso.pred.val-x.train_scaled$area))
+
+#log_lasso.pred.val <- predict(lasso.mod.cv, newx=mod.matrix.train[,-1],s="lambda.1se")
+#lasso.pred.val=exp(log_lasso.pred.val)-1
+#mse.lasso.cv <- mean((lasso.pred.val-x.train_scaled$area)^2)
+#mae.lasso.cv <- mean(abs(lasso.pred.val-x.train_scaled$area))
+@
+\begin{center}
+  \begin{tabular}{ll}
+    \toprule
+     $MAE_{lasso}$ & \Sexpr{round(mae.lasso.cv,2)}\\
+     $MAE_{full}$ & \Sexpr{round(MAE,2)}\\
+    \bottomrule
+  \end{tabular}
+\end{center}
+\noindent
+Hence we use the model selected by \emph{backward} and \emph{forward} selection.
+
+\newpage
+
+\section{Results}
+Given the analysis of the previous section, this is the model we are going to (possibly) interpret and test:
+\[ area=\beta_0+\beta_1 rain +\beta_2 X +\beta_3 DMC+\beta_4 temp+ \beta_5 wind +\beta_6 season \]
+The selected model leads to the following coefficients:
+<<>>=
+summary(step.mod)
+@
+\noindent
+of which only one is strongly not significant (\emph{seasonspring}) and five are significant well below the 5\% significance level. Compared to the initial \emph{full model}, the reduction of categories in \emph{month} and \emph{day} and the exclusion of the \emph{high leverage poing}, seem to be effective.\\
+Even if our primary task is \emph{prediction} and not \emph{inference}, the result obtained allows us to try an interpretation of coefficients:
+\begin{itemize}
+  \item $\mathbf{\beta_X}$: very mild evidence that as we move toward Eastern part of the park (=\emph{X} increases), \emph{area} increases. This depends by the way ($9x9$ grid) used to divide the area of the park. This kind of information it's specific to the "Montesinho natural park", so not generalizable to other parks. For this reason we could think in a further refinement of the model, to drop it.
+  \item $\mathbf{\beta_{seasonwinter}}$: the \emph{constrast} category is "Autumn", so it represents the \emph{ha} of burned forest due to the fact that we are in winter rather than in autumn. It is signficant, but its sign is not intuitive at first glace (why should be higher the burned area in Winter with respect to the Autumn, considering the in Winter there are less favourable conditions to fire propagations?). It could exhist a variable, like \emph{tempestivity of intervention}, which is negatively related to \emph{area} (higher \emph{tempestivity} $\implies$ lower \emph{area}), positively related to Summer (high amount of resources in terms of crews and equipments is invested in Summer because the risk of fires is high) and negatively related to Winter. So, on average, when a fire happens in Winter, it takes more time to be spotted and to be estinguished.
+  \item $\mathbf{\beta_{seasonspring}}$: strongly not signifcant. No difference with respect to the constrast category Autumn.
+  \item $\mathbf{\beta_{seasonsummer}}$: strongly significant. Specular interpretation provided for $\mathbf{\beta_{seasonwinter}}$
+  \item $\mathbf{\beta_{DMC}}$: significant. As the moisture content of shallow organic layers increases, the \emph{ha} of forest burned by a $\approx 0.3\%$. This is not the expected sign, but the magnitude is very small, maybe could have a scientific explanation. 
+  \item $\mathbf{\beta_{temp}}$: significant. Higher temperature foster fire propagation.
+   \item $\mathbf{\beta_{wind}}$: significant. \emph{wind} plays an important role: it increases by $\approx 9\%$ the \emph{ha} of burned forest.
+   \item $\mathbf{\beta_{rain}}$: mild signficant, due to a high Std. Error in its estimation. Anyway is out of dout that it play the major role in preventing fire propagation. An increase of $1 mm/m^2$ in the amount of rain decreases the $1.11 ha$  the area of burned forest by 
+\end{itemize}
+To assess the robustness of the selected model, we use \emph{Leave One Out Cross-Validation (LOOCV)}: data are shuffled and divided in $n$ folds, with each one, in turn, used as \emph{test set} and the remaning $n-1$ used as \emph{training set}. Then the $mean(MAE)$ over the n folds is computed:
+<<>>=
+#define the cost function MAD
+MAD <- function(log_y, log_yhat) 
+{
+  y=exp(log_y)-1
+  y_hat=exp(log_yhat)-1
+  y_hat[y_hat<0]=0
+  return(mean(abs(y-y_hat)))
+}
+
+
+library(boot)
+step.mod_glm=glm(log(area+1)~X+season+DMC+temp+wind+rain, data=data)
+cv.err_backward=cv.glm(data=data, glmfit=step.mod_glm, cost=MAD)
+MAE_CV_backward=cv.err_backward$delta[2]
+
+full.mod_glm=glm(log(area+1)~., data=data)
+cv.err_full=cv.glm(data=data, glmfit=full.mod_glm, cost=MAD)
+MAE_full_CV=cv.err_full$delta[2]
+
+#cv.err$delta[2]/cv.err_naive$delta[2]#the model has an error on average 30% smaller than 
+                                     #the Naive model
+@
+\begin{center}
+  \begin{tabular}{ll}
+    \toprule
+     $MAE_{backward\,CV}$ & \Sexpr{round(MAE_CV_backward,2)}\\
+     $MAE_{full\,CV}$ & \Sexpr{round(MAE_full_CV,2)}\\
+    \bottomrule
+  \end{tabular}
+\end{center}
+\noindent
+The model selected appears to be robust to different training/test set splits and to perform better in the \emph{test set} than the \emph{full model}: the $MAE_{backward\,CV}$ is \Sexpr{round((1-MAE_CV_backward/MAE_full_CV)*100,2)}\% lower than the $MAE_{full\,CV}$. \\
+However, economical and practical considerations suggest to look for a variables selection approach based on data's cost and availability in cluster (i.e. the 4  \emph{meteorological data} are available together and are cheaper than \emph{fire danger indexes}). Hence we try to use only the four \emph{meteorological data}, because:
+\begin{itemize}
+  \item are cheap and easy to get
+  \item \emph{backward} selection already selected 3 of them (\emph{rain}, \emph{temp}, \emph{wind})
+\end{itemize}
+The estimated model is therefore:
+\[ area=\beta_0+\beta_1 temp +\beta_2 RH +\beta_3 wind +\beta_4 rain \]
+and we test it using \emph{LOOCV}:
+<<>>=
+meteo.mod_glm=glm(log(area+1)~temp+RH+wind+rain,data=data)
+cv.err_meteo=cv.glm(data=data, glmfit=meteo.mod_glm, cost=MAD)
+MAE_CV_meteo=cv.err_meteo$delta[2]
+@
+\begin{center}
+  \begin{tabular}{ll}
+    \toprule
+     $MAE_{meteo\,CV}$ & \Sexpr{round(MAE_CV_meteo,2)}\\
+     $MAE_{full\,CV}$ & \Sexpr{round(MAE_full_CV,2)}\\
+    \bottomrule
+  \end{tabular}
+\end{center}
+\noindent
+The $MAE_{meteo}= $ \Sexpr{round(MAE_CV_meteo,2)}, which is only \Sexpr{round((MAE_CV_meteo/MAE_full_CV-1)*100,2)}\% higher than the \emph{full model} and slightly higher than the $MAE_{backward\,CV}$. So \emph{meteorological data} are a good compromise between \emph{prediction power} and \emph{feasibility} of data.\\
+
+
+Of major importance for the study, given the frequency of small fires ($<1\;ha$) is to understand how our models perform with this kind of data. To understand it, to the \emph{full model}, the \emph{backward stepwise selection model} and the \emph{meteo model} were asked to predict the \emph{area} of samples with a value equal to $0$ in the column \emph{area}.
+<<>>=
+data_zero = data[which(data$area == 0), ]
+
+step.mod.pred.val <- predict(step.mod, newx=data_zero[-13])
+step.mod.pred.val=exp(step.mod.pred.val)-1
+mae.step.mod.pred.val <- mean(abs(step.mod.pred.val-data_zero$area))
+#mae.step.mod.pred.val
+
+meteo.mod.pred.val <- predict(meteo.mod_glm, newx=data_zero[-13])
+meteo.mod.pred.val=exp(meteo.mod.pred.val)-1
+mae.meteo.mod.pred.val <- mean(abs(meteo.mod.pred.val-data_zero$area))
+#mae.meteo.mod.pred.val
+
+full.mod.pred.val <- predict(full.mod, newx=data_zero[-13])
+full.mod.pred.val=exp(full.mod.pred.val)-1
+mae.full.mod.pred.val <- mean(abs(full.mod.pred.val-data_zero$area))
+#mae.full.mod.pred.val
+@
+\noindent
+The results are the following:
+\begin{center}
+  \begin{tabular}{ll}
+    \toprule
+     $MAE0_{step\,CV}$ & \Sexpr{round(mae.step.mod.pred.val,2)}\\
+     $MAE0_{meteo\,CV}$ & \Sexpr{round(mae.meteo.mod.pred.val,2)}\\
+     $MAE0_{full\,CV}$ & \Sexpr{round(mae.full.mod.pred.val,2)}\\
+    \bottomrule
+  \end{tabular}
+\end{center}
+\noindent
+
+
+
+
+
+\newpage
+
+\section{Conclusion}
+It is exceedingly difficult to manage a fire once it breaks out, so the main objective must be prevention. It requires the capacity to:
+\begin{itemize}
+  \item spot fastly a new fire
+  \item individuate areas with high probability to generate fires
+\end{itemize}
+To accomplish this task, there are four available options:
+\begin{itemize}
+  \item \emph{patrol the park}: can detect smaller fires but requires a lot of human resources
+  \item \emph{satellite infrared smoke scanners}: data are costly and with low spatial resolution
+  \item \emph{aerial monitoring through drones}: costly
+  \item \emph{local sensors}: data are cheap and with high spatial resolution
+\end{itemize}
+\noindent
+To achieve the goal we set in section 2, we chose an economical and efficient solution: \emph{local sensors}.
+The results of our analysis produced two models: one derived from backward selection and the other only from meteorological data. Both cases provide a test error close to the complete model and indicate that error is on average $13$ hectares: if we have a fire of $15$ hectares, the model on average could foresee a burned area of $13$ hectares larger or smaller of the real burned area. So, we have a range of $2-28$ hectares of surface. \\
+A further point in favor of the two selected model is the excellent ability to identify small fires: by selecting the subset of the initial data that have a burned area below the hectare, both models provide very accurate predictions. The average error is only two hectares. This allows to calibrate the amount of resources (men and tools) proportionally to the fire's size:
+\begin{itemize}
+  \item \emph{small fires}: use park patrol, in fact if the exact position of the small fire is unknown, it's impossible to intervene
+  \item \emph{large fires}: use air tankers and ground crews
+\end{itemize}
+
+Possible future improvements to the current research could focus on the following question:\\
+what is the role of vegetation? What are the fire prevention strategies currently in force? What are the times of reaction to emergencies? Could it be useful to add data on altitude, slope and exposure to wind and sun?
+Moreover, considering the main cause of the fires, the human being, it could be especially useful to know some information about the human incidence in the park: what are the areas with the most tourists and inhabitants?
+In conclusion, there are many ways to improve the efficiency of the model, but what matters most is that the approach to data can make a difference and allow better management of emergencies.
+
+\newpage
+
+\section{Technical Appendix}
+
+\subsection{ERRORS}
+
+Two measures were used to compare the performances of the tested models: root-mean-square error (RMSE) and mean absolute error (MAE). In both metrics, lower values result in better predictive models.
+
+\begin{equation}
+    RMSE = \frac{1}{n} \sum_{i=1}^n (x_i - \hat{x_i})^2
+\end{equation}
+
+\begin{equation}
+    MAE = \frac{1}{n} \sum_{i=1}^n |x_i - \hat{x_i}|
+\end{equation}
+In our particular case, we will take the MAE into greater consideration, as it is less sensitive to outliers, thus providing a more stable indicator.
+
+\subsection{METHOD FOR EVALUATING AND COMPARING MODELS}
+
+Akaike's information criterion (AIC) was used to compare models with different number of predictors. This method makes a mathematical adjustment to the training error rate in order to estimate the test error rate.
+
+\begin{equation}
+    AIC = -2l(\hat{\theta})+2d
+\end{equation}
+In the case of linear model with Gaussian errors:
+
+\begin{equation}
+    AIC = -2l(\hat{\beta},\hat{\theta})+2d=n\log  \left( \frac{RSS}{n} \right) +2d
+\end{equation}
+We use it in the backward selection. We preferred the AIC to the BIC (Bayesian information criterion) to have a selection method capable of storing models with a large number of variables.
+
+
+\subsection{BACKWARD STEPWISE SELECTION}
+To select the model we used the Backward Stepwise Selection:\\
+
+\framebox[13cm]{%
+\begin{minipage}{110mm}
+$\textit{Input:}$ $\;\;$A full model with $p$ predictors, $M_p$.\\
+$\textit{Output:}$ Single model with best performance among the ones tested.
+\end{minipage}}\\
+\begin{enumerate}
+    \item Let $M_p$ be the full model with $p$ predictors.
+    \item for $k=p,p-1,\dots,1$:
+    \begin{itemize}
+        \item Consider all $k$ models that contain all but one predictor in $M_k$.
+        \item Choose the one having smallest $RSS$ or highest $R^2$, it is $M_{k-1}$.
+    \end{itemize}
+    \item Chose a model among the best models selected, $M_0,\dots, M_p$, through a given criterion (cross-validated predicted error, $C_p$, $AIC$, $BIC$ or $adjustedR^2$).
+\end{enumerate}
+
+\rule{12cm}{.4pt}\\
+It is a heuristic research strategy that provides locally optimal solutions that approach an optimal solution globally in a reasonable amount of time.
+We use it as a cheaper strategy to find a satisfactory model.
+
+
+
+
+\subsection{FORWARD STEPWISE SELECTION}
+To select the model we used the Forward Stepwise Selection:\\
+
+\framebox[13cm]{%
+\begin{minipage}{110mm}
+$\textit{Input:}$ $\;\;$A null model with $0$ predictors, $M_0$.\\
+$\textit{Output:}$ Single model with best performance among the ones tested.
+\end{minipage}}\\
+\begin{enumerate}
+    \item Let $M_0$ be the null model with $p$ predictors.
+    \item for $k=0,1,\dots,p-1$:
+    \begin{itemize}
+        \item Consider all $p-k$ models that augment by one predictor the model $M_k$.
+        \item Choose the one having smallest $RSS$ or highest $R^2$, it is $M_{k+1}$.
+    \end{itemize}
+    \item Chose a model among the best models selected, $M_0,\dots, M_p$, through a given criterion (cross-validated predicted error, $C_p$, $AIC$, $BIC$ or $adjustedR^2$).
+\end{enumerate}
+
+\rule{12cm}{.4pt}\\
+It is a heuristic research strategy that provides locally optimal solutions that approach an optimal solution globally in a reasonable amount of time.
+We use it as a cheaper strategy to find a satisfactory model.
+
+
+
+
+\subsection{ESTIMATE OF THE TEST ERROR}
+To estimate the test error associated with the model, we used the Leave-one-out cross validation (LOOCV):
+\begin{enumerate}
+    \item Splitting the set of observations into two parts: a single observation $(x_1, y_1)$ is used for the validation set, and the remaining observations make up the training set;
+    \item the statistical learning method is fitted on the $n - 1$ training observations;
+    \item the prediction  $\hat{y_i}$ is made for the excluded observation;
+    \item if $Y$ is continuous, $MSE_i = (y_i - \hat{y_i})^2$ provides an estimate for the test error (approximately unbiased but poor);
+    \item repeat the procedure for every $i = 1,...,n$ thereby obtaining $n$ estimates of the test $MSE$.
+    \item The LOOCV estimate of the test $MSE$ is the average of the $n$ estimates,
+\end{enumerate}
+
+\begin{equation}
+    CV_{(n)}=\frac{1}{n}\sum_{i=1}^n RMSE_i
+\end{equation}
+Although the LOOCV is computationally very expensive, the small size of the dataset has allowed to exploit its potential thus obtaining an estimate of the test error with a lower bias than the more common K-fold cross-validation.
+
+
+\subsection{LASSO}
+
+
+\subsubsection{General Problem}
+
+The lasso is a shrinkage method that, thanks to the $1-$norm on the coefficients $\beta_j$ acts in a non linear manner, as can be seen below:
+\begin{subequations}
+\begin{alignat}{2}
+&\min_{\beta}        &\qquad& \sum_{i=1}^n \left( y_i - \beta_0 - \sum_{j=1}^p \beta_j x_{ij} \right)^2 \label{eq:optProb}\\
+&\text{subject to} &      & \sum_{j=1}^p |\beta_j|\leq s,\label{eq:constraint1}
+\end{alignat}
+\end{subequations}
+
+
+It's equivalent Lagrangian Form is:
+
+\begin{equation}
+    \min_\beta \quad \sum_{i=1}^n \left( y_i - \beta_0 - \sum_{j=1}^p \beta_j x_{ij} \right)^2 + \lambda \sum_{j=1}^p |\beta_j|
+\end{equation}
+
+
+
+\subsubsection{Pathwise Coordinate Descent (Multivariate Case)}
+
+Fixed the penalization $\lambda$ we optimize w.r.t. each $\beta_j$, keeping the $\beta_k,\; k\neq j$ fixed, in this way:
+\begin{itemize}
+    \item Assume all regressors are standardized with zero mean and unit norm
+    \item Let $\Tilde{\beta_k}$ be the estimate of $\beta_k$ for the parameter $\lambda$
+    \item rearrange the lagrangian form to isolate $\beta_j$ 
+    \begin{equation}
+    R(\Tilde{\beta}(\lambda), \beta_j)=\frac{1}{2} \sum_{i=1}^n \left( y_i - \sum_{k\neq j} \Tilde{\beta_k} x_{ik} - \beta_j x_{ij}\right)^2 + \lambda \sum_{j=1}^p \Tilde{\beta}(\lambda) + \lambda |\beta_j|
+\end{equation}
+    \item It has an explicit solution, giving the update
+    \begin{equation}
+    \Tilde{\beta}(\lambda) \longleftarrow S\left( \sum_{i=1}^n x_{ij} (y_i - \Tilde{y_i}^j), \lambda \right)
+\end{equation}
+    Where $S(t,\lambda)=sign(t)(|t|-\lambda)_+$ is the '$soft-thresholding$' operator
+\end{itemize}
+
+Cycling through each variable in turn yields the lasso estimate $\Tilde{\beta}$.
+
+\end{document}
